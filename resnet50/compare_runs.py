@@ -1,15 +1,13 @@
-"""Compare all training runs in runs/ and evaluate their submissions on the test answers.
+"""Compare all ResNet50 training runs in resnet50/runs/ and evaluate their submissions on the test answers.
 
-Usage:
-    python3 compare_runs.py                    # analyse everything, detailed analysis of the best-validation run
-    python3 compare_runs.py --run <folder>     # detailed analysis of a specific run folder name
-    python3 compare_runs.py --no-images        # skip the image grid of test samples
+Usage (from the repository root):
+    pip install matplotlib
+    python3 resnet50/compare_runs.py                    # analyse everything, detailed analysis of the best-validation run
+    python3 resnet50/compare_runs.py --run <folder>     # detailed analysis of a specific run folder name
+    python3 resnet50/compare_runs.py --no-images        # skip the image grid of test samples
 
-Reads : runs/*/history.json, runs/*/submission.csv, runs/*/test_probs.csv, test_answer.csv
-Writes: results/summary.csv, results/seeds.csv, results/error_analysis.csv, results/*.png
-
-IMPORTANT: choose the final model with the VALIDATION accuracy. The test answers are only
-for reporting the final numbers and for the error analysis (question e), not for tuning.
+Reads : resnet50/runs/*/history.json, submission.csv, test_probs.csv, and test_answer.csv (repo root)
+Writes: resnet50/results/summary.csv, seeds.csv, error_analysis.csv, *.png
 """
 import argparse
 import csv
@@ -24,11 +22,12 @@ matplotlib.use("Agg")  # write figures to files; no window needed
 import matplotlib.pyplot as plt
 from PIL import Image
 
-HERE = Path(__file__).resolve().parent
+HERE = Path(__file__).resolve().parent      # resnet50/
+ROOT = HERE.parent                          # repository root
 RUNS_DIR = HERE / "runs"
 RESULTS_DIR = HERE / "results"
-ANSWER_PATH = HERE / "test_answer.csv"
-TEST_IMG_DIR = HERE / "datasets" / "test"
+ANSWER_PATH = ROOT / "test_answer.csv"
+TEST_IMG_DIR = ROOT / "datasets" / "test"
 SKIP_PREFIXES = ("smoke",)  # run folders starting with these names are ignored
 CLASS_NAME = {0: "cat", 1: "dog"}
 
@@ -387,7 +386,7 @@ def main():
 
     runs = load_runs()
     if not runs:
-        sys.exit("No runs with history.json found in runs/")
+        sys.exit("No runs with history.json found in resnet50/runs/")
     truth = read_labels(ANSWER_PATH) if ANSWER_PATH.exists() else None
     if truth is None:
         print(f"note: {ANSWER_PATH.name} not found, test metrics will be skipped.")
@@ -401,7 +400,7 @@ def main():
     seed_runs = varying(runs, "seed")
     vals = [r["stats"]["best_val_acc"] for r in seed_runs]
     std = statistics.stdev(vals) if len(vals) > 1 else None
-    noise = std if std else 0.0012  # fall back to the binomial error of 5000 val images
+    noise = std if std else 0.0014  # fall back to the binomial error of 5000 val images
     print(f"\nLoaded {len(runs)} runs from {RUNS_DIR}\n")
 
     # ---- validation table
@@ -477,7 +476,8 @@ def main():
     else:
         chosen = max(runs, key=lambda r: r["stats"]["best_val_acc"])
     print(f"\nSelected run (highest validation accuracy): {chosen['dir'].name}  [{chosen['label']}]")
-    print(f"To use it as the final submission:  cp \"runs/{chosen['dir'].name}/submission.csv\" submission.csv")
+    print(f"To use it as the final submission (from the repo root):  "
+          f"cp \"resnet50/runs/{chosen['dir'].name}/submission.csv\" submission.csv")
     if truth and chosen["test"]:
         confusion_figure(chosen, "fig_confusion_matrix.png")
         error_analysis(chosen, truth, not args.no_images)
