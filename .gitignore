@@ -1,0 +1,13 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# macOS
+.DS_Store
+
+# Dataset images are large
+datasets/
+
+# Trained model weights (~95 MB each)
+*.pt
