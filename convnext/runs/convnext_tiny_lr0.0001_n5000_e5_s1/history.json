@@ -1,0 +1,65 @@
+{
+  "args": {
+    "train_per_class": 5000,
+    "val_per_class": 0,
+    "epochs": 5,
+    "lr": 0.0001,
+    "batch_size": 32,
+    "num_workers": 4,
+    "seed": 1,
+    "freeze_backbone": false,
+    "no_augment": false,
+    "out_dir": "/Users/hkt456/code/ntu/ie4483_dog-vs-cat-cnn/convnext/runs/convnext_tiny_lr0.0001_n5000_e5_s1",
+    "overwrite": false
+  },
+  "device": "mps",
+  "torch_version": "2.13.0",
+  "train_images": 10000,
+  "val_images": 5000,
+  "trainable_params": 27821666,
+  "best_val_acc": 0.995,
+  "best_epoch": 5,
+  "completed": true,
+  "history": [
+    {
+      "epoch": 1,
+      "train_loss": 0.045399715642072264,
+      "train_acc": 0.9865,
+      "val_loss": 0.018793242707755415,
+      "val_acc": 0.9926,
+      "time_s": 186.7084951669999
+    },
+    {
+      "epoch": 2,
+      "train_loss": 0.015622122172545641,
+      "train_acc": 0.9943,
+      "val_loss": 0.016651307432353497,
+      "val_acc": 0.9944,
+      "time_s": 153.08714933300007
+    },
+    {
+      "epoch": 3,
+      "train_loss": 0.007973116189497522,
+      "train_acc": 0.997,
+      "val_loss": 0.017461661942314823,
+      "val_acc": 0.9942,
+      "time_s": 156.05422845900011
+    },
+    {
+      "epoch": 4,
+      "train_loss": 0.002989034787885612,
+      "train_acc": 0.9993,
+      "val_loss": 0.022676114760854398,
+      "val_acc": 0.9926,
+      "time_s": 153.8061858750002
+    },
+    {
+      "epoch": 5,
+      "train_loss": 0.002202341213694308,
+      "train_acc": 0.9994,
+      "val_loss": 0.01567938084558118,
+      "val_acc": 0.995,
+      "time_s": 155.20223020799995
+    }
+  ]
+}

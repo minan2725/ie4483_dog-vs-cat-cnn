@@ -9,7 +9,7 @@ preprocessing.py    shared data pipeline (everyone imports this file)
 test_answer.csv     ground-truth labels of the 500 test images (final evaluation only, not for tuning)
 datasets/           the images (NOT in git)
 resnet50/           ResNet50 classifier: code, runs/, results/ and its own README (best weights are described there)
-convnext/           second classifier 
+convnext/           ConvNeXt-Tiny classifier: code, experiments, results, and README
 cifar10/            CIFAR-10 part
 ```
 

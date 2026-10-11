@@ -11,3 +11,6 @@ datasets/
 
 # Trained model weights (~95 MB each)
 *.pt
+
+# Small local ConvNeXt smoke runs are disposable
+convnext/runs/smoke*/

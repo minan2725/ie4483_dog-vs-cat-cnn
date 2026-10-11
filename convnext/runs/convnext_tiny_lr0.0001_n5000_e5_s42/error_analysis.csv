@@ -1,0 +1,11 @@
+status,id,image_path,true,pred,prob_cat,prob_dog
+wrong,464,datasets/test/464.jpg,1,0,0.9164237976074219,0.0835762470960617
+wrong,328,datasets/test/328.jpg,1,0,0.8969322443008423,0.10306777060031891
+correct_low_confidence,242,datasets/test/242.jpg,0,0,0.8707407116889954,0.12925927340984344
+correct_low_confidence,374,datasets/test/374.jpg,0,0,0.898602306842804,0.10139768570661545
+correct_low_confidence,425,datasets/test/425.jpg,1,1,0.09564880281686783,0.9043511748313904
+correct_low_confidence,216,datasets/test/216.jpg,0,0,0.9186011552810669,0.0813988745212555
+correct_low_confidence,212,datasets/test/212.jpg,0,0,0.9638532996177673,0.03614674136042595
+correct_low_confidence,67,datasets/test/67.jpg,1,1,0.018054582178592682,0.9819453358650208
+correct_low_confidence,47,datasets/test/47.jpg,1,1,0.015522807836532593,0.984477162361145
+correct_low_confidence,313,datasets/test/313.jpg,1,1,0.01276378333568573,0.9872362017631531

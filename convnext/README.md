@@ -1,0 +1,126 @@
+# ConvNeXt-Tiny for Dogs vs. Cats
+
+This folder contains the second Dogs vs. Cats classifier. Run all commands from
+the repository root. CIFAR-10 is outside this model's scope.
+
+## Setup
+
+Use Python 3.12 (the system Python 3.9 is too old for the pinned packages):
+
+```sh
+uv venv .venv --python 3.12
+uv pip install --python .venv/bin/python -r convnext/requirements.txt
+.venv/bin/python -c 'import torch; print(torch.backends.mps.is_available())'
+```
+
+The [assignment's dataset archive](https://drive.google.com/file/d/1q0r6yeHQMS17R3wz-s2FIbMR5DAGZK5v/view?usp=sharing)
+contains `datasets/train/{cat,dog}` (10,000
+each), `datasets/val/{cat,dog}` (2,500 each), and `datasets/test` (500 flat
+images). Extract `datasets/` at the repository root. It is ignored by Git.
+
+## Model and preprocessing
+
+TorchVision ConvNeXt-Tiny starts from ImageNet-1K weights and replaces its last
+linear classifier with a two-class layer. The classifier produces two logits:
+index 0 is cat and index 1 is dog. Input is a 3 x 224 x 224 RGB tensor.
+
+```text
+RGB image -> shared resize/crop/normalization -> ConvNeXt-Tiny features
+          -> global average pool -> layer norm -> 768-to-2 linear head
+          -> cat/dog logits
+```
+
+The shared `preprocessing.py` applies random crop, flip, rotation, and color
+jitter during training, and deterministic resize/center crop for validation
+and test. Validation/test resize to 256 before cropping to 224, matching
+ResNet50; TorchVision's ConvNeXt-Tiny weight preset uses resize 236 instead.
+The model uses cross-entropy loss, AdamW (weight decay 1e-4), and cosine
+learning-rate decay. All layers are fine-tuned unless `--freeze-backbone` is
+set. The checkpoint with the highest validation accuracy is saved as `best.pt`.
+
+## Measured results
+
+| Run | Best validation accuracy | Best epoch | Mean seconds/epoch |
+| --- | ---: | ---: | ---: |
+| 1e-4, seed 42 | 99.50% | 4 | 158 |
+| 1e-4, seed 1 | 99.50% | 5 | 161 |
+| 3e-4, seed 42 | 99.30% | 5 | 157 |
+
+The two baseline seeds average 99.50% validation accuracy. This is a small
+repeatability check, not a robust estimate of run-to-run variance. The
+validation-selected model is the 1e-4, seed-42 run: it ties on accuracy with
+seed 1 and has lower best-epoch validation loss (0.01521 vs. 0.01568). It
+scores 99.60% (498/500) on the final test set: precision 100%, recall 99.23%,
+F1 99.61%, with 0 false positives and 2 false negatives for the dog class.
+The higher learning rate performs worse on validation, so 1e-4 is retained.
+At matching seeds, the existing ResNet50 baseline scores 99.26% (seed 42) and
+99.36% (seed 1) on validation, compared with ConvNeXt's 99.50% for both.
+These small differences should not be presented as a definitive model ranking.
+
+Both false negatives (test IDs 328 and 464) are visually similar "No Photo
+Available" dog-silhouette placeholders. They illustrate a limitation on
+non-photographic inputs; they are not evidence that the classifier struggles
+with ordinary dog photos. A correctly classified example is ID 242, a dark
+cat against a dark background. These observations come from inspecting the
+images and should be phrased as qualitative examples in the group report.
+
+## Experiments
+
+First verify a small run. If batch size 32 exhausts MPS memory, use
+`--batch-size 16` for every full run and record that difference from ResNet50.
+
+```sh
+.venv/bin/python convnext/train_convnext.py --train-per-class 20 --val-per-class 10 --epochs 1 --num-workers 0 --out-dir convnext/runs/smoke_mps_b32
+```
+
+The comparable baseline uses 5,000 images per class, all 5,000 validation
+images, 224-pixel inputs, five epochs, batch size 32, and learning rate 1e-4.
+Two baseline seeds give a small reproducibility check. One learning-rate run
+tests sensitivity while keeping other settings fixed:
+
+```sh
+.venv/bin/python convnext/train_convnext.py --seed 42
+.venv/bin/python convnext/train_convnext.py --seed 1
+.venv/bin/python convnext/train_convnext.py --seed 42 --lr 3e-4
+.venv/bin/python convnext/compare_runs.py
+```
+
+Each run writes `history.json` and an ignored `best.pt` in its own folder.
+To use a trained checkpoint on another machine, transfer `best.pt`
+separately or reproduce the run; Git will include the metrics but not weights.
+`compare_runs.py` writes validation-only tables and a training figure in
+`convnext/results/`. `model_comparison.csv` aligns the baseline seeds with
+the existing ResNet50 validation results. The seed table shows the mean and
+sample standard deviation when at least two baseline seeds are complete.
+Results may vary slightly on MPS even with fixed seeds.
+
+## Final prediction and report
+
+Choose one run by validation accuracy (validation loss breaks ties), then
+predict the test set once:
+
+```sh
+.venv/bin/python convnext/predict_convnext.py --run convnext_tiny_lr0.0001_n5000_e5_s42 --evaluate
+```
+
+Replace the run name with the actual validation-selected run. The command
+checks all 500 image IDs against `test_answer.csv`, writes `submission.csv`
+(`id,label`, with dog=1), `test_probs.csv`, `final_metrics.json`, and
+`error_analysis.csv` to that run folder. `--evaluate` reads labels only for
+this final evaluation. Review the listed image paths yourself before
+describing correct and incorrect cases in the report. Do not use test metrics
+to choose hyperparameters or checkpoints. Report the data counts, training
+settings, architecture, validation mean and variation, comparison with
+ResNet50, and final test examples. With two seeds, treat the observed spread
+as indicative rather than a precise uncertainty estimate. Cite TorchVision
+and the ConvNeXt paper.
+
+References: [TorchVision ConvNeXt-Tiny](https://docs.pytorch.org/vision/master/models/generated/torchvision.models.convnext_tiny.html),
+[A ConvNet for the 2020s](https://arxiv.org/abs/2201.03545).
+
+## Files
+
+- `train_convnext.py`: train and validate one experiment.
+- `compare_runs.py`: compare validation experiments and ResNet50 baselines.
+- `predict_convnext.py`: generate one final submission and optional test analysis.
+- `requirements.txt`: tested package versions for Python 3.12 on Apple Silicon.

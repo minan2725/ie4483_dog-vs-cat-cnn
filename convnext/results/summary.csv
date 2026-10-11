@@ -1,0 +1,4 @@
+folder,seed,lr,train_per_class,val_images,epochs,batch_size,frozen,augmented,best_val_acc,best_epoch,best_val_loss,final_train_acc,sec_per_epoch,trainable_params
+convnext_tiny_lr0.0001_n5000_e5_s1,1,0.0001,5000,5000,5,32,False,True,0.995,5,0.01567938084558118,0.9994,160.97165780840004,27821666
+convnext_tiny_lr0.0001_n5000_e5_s42,42,0.0001,5000,5000,5,32,False,True,0.995,4,0.015209643662895542,0.9997,158.04443770819998,27821666
+convnext_tiny_lr0.0003_n5000_e5_s42,42,0.0003,5000,5000,5,32,False,True,0.993,5,0.022434117488778427,0.9991,156.8559023167999,27821666
