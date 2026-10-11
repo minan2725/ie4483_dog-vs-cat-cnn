@@ -1,0 +1,14 @@
+id,status,true,pred,prob_cat,prob_dog
+49,wrong,dog,cat,0.7050,0.2950
+242,wrong,cat,dog,0.3390,0.6610
+45,wrong,cat,dog,0.4065,0.5935
+403,wrong,cat,dog,0.4077,0.5923
+313,wrong,dog,cat,0.5625,0.4375
+342,correct_low_confidence,cat,cat,0.5273,0.4727
+464,correct_low_confidence,dog,dog,0.4321,0.5679
+328,correct_low_confidence,dog,dog,0.4170,0.5830
+181,correct_low_confidence,cat,cat,0.6300,0.3700
+453,correct_low_confidence,cat,cat,0.6618,0.3382
+495,correct_low_confidence,dog,dog,0.3228,0.6772
+374,correct_low_confidence,cat,cat,0.6823,0.3177
+245,correct_low_confidence,dog,dog,0.3136,0.6864

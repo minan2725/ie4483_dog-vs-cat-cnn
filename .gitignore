@@ -1,3 +1,6 @@
+# Config files
+!**/.gitkeep
+
 # Python environment and caches
 .venv/
 __pycache__/
@@ -8,6 +11,8 @@ __pycache__/
 
 # Dataset images are large
 datasets/
+cifar-10-batches-py
+cifar-10/
 
 # Trained model weights (~95 MB each)
 *.pt
