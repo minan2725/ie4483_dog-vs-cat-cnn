@@ -1,0 +1,12 @@
+## Available configurations
+vgg16_lr0.0001_n1000_e10_s42
+vgg16_lr0.0001_n1000_e10_s42_noaug --> overfitted
+vgg16_lr0.0001_n2500_e10_s42
+vgg16_lr0.0001_n5000_e10_s1
+vgg16_lr0.0001_n5000_e10_s2 --> best
+vgg16_lr0.0001_n5000_e10_s42
+vgg16_lr0.0001_n5000_e10_s42_frozen
+vgg16_lr0.0001_n5000_e10_s42_scratch
+vgg16_lr0.0001_n5000_e10_s42_no_aug
+vgg16_lr0.001_n5000_e10_s42
+vgg16_lr1e-05_n5000_e10_s42
