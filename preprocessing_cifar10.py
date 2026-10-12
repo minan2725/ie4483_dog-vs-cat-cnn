@@ -98,7 +98,7 @@ def class_balanced_indices(dataset, per_class=None, imbalance=None, seed=SEED):
     return sorted(chosen)
 
 
-def get_loaders(train_per_class, val_per_class=None, imbalance=None,
+def get_loaders(train_per_class=4000, val_per_class=None, imbalance=None,
                 batch_size=32, num_workers=4, data_dir=DATA_DIR, augment=True):
     data_dir = Path(data_dir)
     train_tf, eval_tf = get_transforms(augment)

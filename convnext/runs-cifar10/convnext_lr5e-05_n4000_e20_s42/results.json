@@ -1,0 +1,57 @@
+{
+    "per_class_accuracy": {
+        "airplane": {
+            "correct": 955,
+            "total": 1000,
+            "accuracy": 0.955
+        },
+        "automobile": {
+            "correct": 955,
+            "total": 1000,
+            "accuracy": 0.955
+        },
+        "bird": {
+            "correct": 912,
+            "total": 1000,
+            "accuracy": 0.912
+        },
+        "cat": {
+            "correct": 830,
+            "total": 1000,
+            "accuracy": 0.83
+        },
+        "deer": {
+            "correct": 918,
+            "total": 1000,
+            "accuracy": 0.918
+        },
+        "dog": {
+            "correct": 866,
+            "total": 1000,
+            "accuracy": 0.866
+        },
+        "frog": {
+            "correct": 962,
+            "total": 1000,
+            "accuracy": 0.962
+        },
+        "horse": {
+            "correct": 961,
+            "total": 1000,
+            "accuracy": 0.961
+        },
+        "ship": {
+            "correct": 964,
+            "total": 1000,
+            "accuracy": 0.964
+        },
+        "truck": {
+            "correct": 960,
+            "total": 1000,
+            "accuracy": 0.96
+        }
+    },
+    "total_accuracy": 0.9283,
+    "total_correct": 9283,
+    "total_samples": 10000
+}
