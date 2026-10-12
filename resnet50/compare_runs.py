@@ -280,14 +280,19 @@ def make_figures(runs):
         axes[1].set_title("Training time")
         fig.suptitle("Effect of input image size")
         save(fig, "fig_image_size.png")
-    # 6. pretrained vs scratch
-    for s in [r for r in runs if r["cfg"]["scratch"]]:
-        pre = find(runs, lr=s["cfg"]["lr"])
-        if pre:
-            curves_figure([(pre, f"pretrained ({pre['cfg']['epochs']} epochs)"),
-                           (s, f"from scratch ({s['cfg']['epochs']} epochs)")],
-                          f"Pretrained vs random initialisation (lr={s['cfg']['lr']:g})",
-                          "fig_pretrained_vs_scratch.png")
+    # 6. pretrained vs scratch: ALL scratch runs with the same lr go into one figure,
+    #    so that e.g. 10 and 20 epochs can be compared with the pretrained run.
+    scratch_runs = sorted([r for r in runs if r["cfg"]["scratch"]], key=lambda r: r["cfg"]["epochs"])
+    lrs = sorted({r["cfg"]["lr"] for r in scratch_runs})
+    for lr in lrs:
+        pre = find(runs, lr=lr)
+        if not pre:
+            continue
+        items = [(pre, f"pretrained ({pre['cfg']['epochs']} epochs)")]
+        items += [(r, f"from scratch ({r['cfg']['epochs']} epochs)")
+                  for r in scratch_runs if r["cfg"]["lr"] == lr]
+        fname = "fig_pretrained_vs_scratch.png" if len(lrs) == 1 else f"fig_pretrained_vs_scratch_lr{lr:g}.png"
+        curves_figure(items, f"Pretrained vs random initialisation (lr={lr:g})", fname)
     # 7. overview of all runs
     ordered = sorted(runs, key=lambda r: r["stats"]["best_val_acc"])
     fig, ax = plt.subplots(figsize=(8, 0.45 * len(ordered) + 1.5))
