@@ -1,0 +1,2 @@
+seeds,mean_val_acc,std_val_acc,min_val_acc,max_val_acc
+"1,2,42",0.9290333333333333,0.0004932882862316341,0.9287,0.9296
