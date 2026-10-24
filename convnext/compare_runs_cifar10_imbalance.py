@@ -9,6 +9,7 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 HERE = Path(__file__).resolve().parent
 RUNS_DIR = HERE / "runs-cifar10-imbalance"
@@ -54,19 +55,31 @@ def write_csv(path, rows, fields):
 
 def make_figure(runs):
     fig, axes = plt.subplots(1, 2, figsize=(11, 4))
+    max_epochs = max(
+        e["epoch"]
+        for run in runs
+        for e in run["data"]["history"]
+    )
+
     for run in runs:
         label = run["folder"].replace("convnext_tiny_", "")
-        epochs = run["data"]["history"]
-        axes[0].plot([e["epoch"] for e in epochs],
-                     [100 * e["val_f1"] for e in epochs], marker="o", label=label)
-        axes[1].plot([e["epoch"] for e in epochs],
-                     [e["val_loss"] for e in epochs], marker="o", label=label)
-    axes[0].set_ylabel("Validation f1uracy (%)")
+        history = run["data"]["history"]
+        epochs = [e["epoch"] for e in history]
+
+        axes[0].plot(epochs, [100 * e["val_f1"] for e in history],
+                     marker="o", label=label)
+        axes[1].plot(epochs, [e["val_loss"] for e in history],
+                     marker="o", label=label)
+
+    axes[0].set_ylabel("Validation F1 score (%)")
     axes[1].set_ylabel("Validation loss")
+
     for ax in axes:
         ax.set_xlabel("Epoch")
-        ax.set_xticks([e["epoch"] for e in runs[0]["data"]["history"]])
+        ax.set_xlim(1, max_epochs)
+        ax.xaxis.set_major_locator(MultipleLocator(5))
         ax.grid(alpha=0.3)
+
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=2, fontsize=8)
     fig.tight_layout(rect=(0, 0.18, 1, 1))
