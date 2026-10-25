@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 HERE = Path(__file__).resolve().parent
 RUNS_DIR = HERE / "runs"
 RESULTS_DIR = HERE / "results"
-RESNET_SUMMARY = HERE.parent / "resnet50" / "results" / "summary.csv"
+RESNET_SUMMARY = HERE.parent / "convnext50" / "results" / "summary.csv"
 BASELINE_SEEDS = (42, 1, 2)
 
 
