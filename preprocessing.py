@@ -2,11 +2,17 @@
 Shared preprocessing pipeline for this project.
 
 This file handles image loading, resizing, normalization, data augmentation,
-balanced dataset sampling, random seeds, and DataLoader creation. 
+duplicate removal, random seeds, and DataLoader creation.
 Training augmentation can be disabled for experiments.
+
+Data used for training: ALL images in datasets/train, except the train images that are
+also present in val/ or test/ (perceptual duplicates, listed in
+duplicate_pairs.csv next to this file). Validation uses ALL images in datasets/val.
 """
+import csv
+import os
 import random
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import numpy as np
 import torch
@@ -16,6 +22,8 @@ from torchvision import datasets, transforms
 
 # Dataset folder (contains train/ val/ test/), located next to this file.
 DATA_DIR = Path(__file__).resolve().parent / "datasets"
+# Pairs of identical images found with a perceptual hash (train vs val, train vs test).
+DUPLICATES_CSV = Path(__file__).resolve().parent / "duplicate_pairs.csv"
 
 SEED = 42
 IMG_SIZE = 224
@@ -73,25 +81,41 @@ def get_transforms(img_size=IMG_SIZE, augment=True):
     return train_tf, eval_tf
 
 
-def class_balanced_indices(dataset, per_class, seed=SEED):
-    """Deterministically pick `per_class` images of each class (None/0 = all)."""
-    if not per_class:
-        return list(range(len(dataset)))
-    rng = random.Random(seed)
-    by_class = {}
-    for idx, (_, label) in enumerate(dataset.samples):
-        by_class.setdefault(label, []).append(idx)
-    chosen = []
-    for label in sorted(by_class):
-        idxs = sorted(by_class[label])
-        rng.shuffle(idxs)
-        chosen += idxs[:per_class]
-    return sorted(chosen)
+def load_duplicate_train_files(csv_path=DUPLICATES_CSV):
+    """Paths (relative to train/, e.g. 'cat/cat.3908.jpg') of the train images listed in the csv."""
+    csv_path = Path(csv_path)
+    if not csv_path.exists():
+        raise FileNotFoundError(f"{csv_path} not found. Keep it next to preprocessing.py.")
+    dups = set()
+    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            for key in ("path_1", "path_2"):
+                parts = PurePosixPath(row[key].strip().replace("\\", "/")).parts
+                if parts and parts[0] == "train":  # only the train copy is removed
+                    dups.add("/".join(parts[1:]))
+    return dups
 
 
-def get_loaders(train_per_class=5000, val_per_class=None,
-                batch_size=32, num_workers=4, data_dir=DATA_DIR,
-                img_size=IMG_SIZE, augment=True):
+def clean_train_indices(train_ds, train_root, csv_path=DUPLICATES_CSV):
+    """Indices of the train images that are NOT duplicates of a val/test image."""
+    dups = load_duplicate_train_files(csv_path)
+    keep, removed = [], set()
+    for i, (path, _) in enumerate(train_ds.samples):
+        rel = os.path.relpath(path, train_root).replace(os.sep, "/")
+        if rel in dups:
+            removed.add(rel)
+        else:
+            keep.append(i)
+    missing = dups - removed
+    if missing:  # fail loudly: a typo or a different dataset copy would silently keep the leak
+        raise RuntimeError(f"{len(missing)} images listed in {Path(csv_path).name} were not found "
+                           f"in train/ (for example {sorted(missing)[:3]}).")
+    print(f"Removed {len(removed)} train images that are duplicates of val/test images.")
+    return keep
+
+
+def get_loaders(batch_size=32, num_workers=4, data_dir=DATA_DIR,
+                img_size=IMG_SIZE, augment=True, seed=SEED):
     data_dir = Path(data_dir)
     train_tf, eval_tf = get_transforms(img_size, augment)
     train_ds = datasets.ImageFolder(data_dir / "train", transform=train_tf, loader=rgb_loader)
@@ -99,16 +123,16 @@ def get_loaders(train_per_class=5000, val_per_class=None,
     # Label convention required by the brief: 0 = cat, 1 = dog
     assert train_ds.class_to_idx == {"cat": 0, "dog": 1}, train_ds.class_to_idx
 
-    # The SAME images are chosen regardless of the training seed, so runs are comparable.
-    train_sub = Subset(train_ds, class_balanced_indices(train_ds, train_per_class))
-    val_sub = Subset(val_ds, class_balanced_indices(val_ds, val_per_class))
+    # All train images except the duplicates; all val images. No random subsampling.
+    train_sub = Subset(train_ds, clean_train_indices(train_ds, data_dir / "train"))
 
+    # The seed controls the shuffling order and the random augmentation of each run.
     g = torch.Generator()
-    g.manual_seed(SEED)
+    g.manual_seed(seed)
     train_loader = DataLoader(train_sub, batch_size=batch_size, shuffle=True,
                               num_workers=num_workers, generator=g,
                               persistent_workers=num_workers > 0)
-    val_loader = DataLoader(val_sub, batch_size=batch_size, shuffle=False,
+    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False,
                             num_workers=num_workers,
                             persistent_workers=num_workers > 0)
     return train_loader, val_loader
