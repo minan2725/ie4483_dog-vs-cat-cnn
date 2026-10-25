@@ -1,14 +1,18 @@
 from pathlib import Path
 import pandas as pd
-from sklearn.metrics import accuracy_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, f1_score, confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 HERE = Path(__file__).resolve().parent
 RUNS_DIR = HERE / "runs-cifar10"
 RESULTS_DIR = HERE / "results-cifar10"
 GROUND_TRUTH = HERE.parent / "cifar_ground_truth.csv"
+CONFUSION_DIR = RESULTS_DIR / "confusion_matrices"
 CONVNEXT_RESULT = RESULTS_DIR / "test_results.csv"
 CONVNEXT_SUMMARY = RESULTS_DIR / "test_summary.csv"
 
+if not CONFUSION_DIR.exists():
+    CONFUSION_DIR.mkdir(parents=True)
 
 def main():
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -70,6 +74,21 @@ def main():
             correct / total if total else 0.0
             for correct, total in zip(cm.diagonal(), cm.sum(axis=1))
         ]
+        
+        fig, ax = plt.subplots(figsize=(10, 8))
+        
+        display = ConfusionMatrixDisplay(
+            confusion_matrix=cm,
+            display_labels=class_labels
+        )
+        display.plot(ax=ax, cmap="Blues", values_format="d", xticks_rotation=45)
+        ax.set_title(f"Confusion Matrix - {model_name}")
+        ax.set_xlabel("Predicted Label")
+        ax.set_ylabel("Ground Truth Label")
+        fig.tight_layout()
+
+        fig.savefig(CONFUSION_DIR / f"{model_name}_confusion_matrix.png", dpi=300)
+        plt.close(fig)
 
         row = {
             "model": model_name,
