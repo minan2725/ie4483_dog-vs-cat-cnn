@@ -1,7 +1,7 @@
 """Train an ImageNet-pretrained ConvNeXt-Tiny for Dogs vs. Cats.
 
 Run from the repository root. Each experiment has its own directory under
-convnext/runs/ and uses preprocessing.py for all image transforms and sampling.
+convnext/runs/ and uses preprocessing.py for transforms and duplicate removal.
 """
 
 import argparse
@@ -19,6 +19,8 @@ sys.path.insert(0, str(HERE.parent))
 from preprocessing import get_device, get_loaders, set_seed  # noqa: E402
 
 RUNS_DIR = HERE / "runs"
+EXPECTED_TRAIN_IMAGES = 19_981
+EXPECTED_VAL_IMAGES = 5_000
 
 
 def build_model(freeze_backbone=False, pretrained=True):
@@ -56,10 +58,8 @@ def run_epoch(model, loader, criterion, device, optimizer=None):
 
 
 def default_run_name(args):
-    parts = ["convnext_tiny", f"lr{args.lr:g}", f"n{args.train_per_class}",
+    parts = ["convnext_tiny", f"lr{args.lr:g}", f"n{EXPECTED_TRAIN_IMAGES}",
              f"e{args.epochs}", f"s{args.seed}"]
-    if args.val_per_class:
-        parts.append(f"v{args.val_per_class}")
     if args.batch_size != 32:
         parts.append(f"b{args.batch_size}")
     if args.freeze_backbone:
@@ -71,9 +71,6 @@ def default_run_name(args):
 
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--train-per-class", type=int, default=5000)
-    parser.add_argument("--val-per-class", type=int, default=0,
-                        help="0 uses the complete validation set")
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--batch-size", type=int, default=32)
@@ -84,10 +81,10 @@ def parse_args():
     parser.add_argument("--out-dir", type=Path)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
-    if min(args.train_per_class, args.epochs, args.batch_size, args.lr) <= 0:
-        parser.error("train-per-class, epochs, batch-size, and lr must be positive")
-    if args.val_per_class < 0 or args.num_workers < 0:
-        parser.error("val-per-class and num-workers cannot be negative")
+    if min(args.epochs, args.batch_size, args.lr) <= 0:
+        parser.error("epochs, batch-size, and lr must be positive")
+    if args.num_workers < 0:
+        parser.error("num-workers cannot be negative")
     return args
 
 
@@ -100,18 +97,16 @@ def main():
     set_seed(args.seed)
     device = get_device()
     train_loader, val_loader = get_loaders(
-        train_per_class=args.train_per_class,
-        val_per_class=args.val_per_class or None,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
         augment=not args.no_augment,
+        seed=args.seed,
     )
-    expected_train = 2 * args.train_per_class
-    if len(train_loader.dataset) != expected_train:
-        raise SystemExit(f"Expected {expected_train} training images; found {len(train_loader.dataset)}")
-    if args.val_per_class and len(val_loader.dataset) != 2 * args.val_per_class:
-        raise SystemExit("Validation set has fewer images than --val-per-class requests")
-    if val_loader.dataset.dataset.class_to_idx != {"cat": 0, "dog": 1}:
+    if len(train_loader.dataset) != EXPECTED_TRAIN_IMAGES:
+        raise SystemExit(f"Expected {EXPECTED_TRAIN_IMAGES} training images; found {len(train_loader.dataset)}")
+    if len(val_loader.dataset) != EXPECTED_VAL_IMAGES:
+        raise SystemExit(f"Expected {EXPECTED_VAL_IMAGES} validation images; found {len(val_loader.dataset)}")
+    if val_loader.dataset.class_to_idx != {"cat": 0, "dog": 1}:
         raise SystemExit("Validation labels must be cat=0, dog=1")
 
     model = build_model(freeze_backbone=args.freeze_backbone).to(device)

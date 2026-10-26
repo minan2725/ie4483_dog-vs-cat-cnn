@@ -14,9 +14,12 @@ uv pip install --python .venv/bin/python -r convnext/requirements.txt
 ```
 
 The [assignment's dataset archive](https://drive.google.com/file/d/1q0r6yeHQMS17R3wz-s2FIbMR5DAGZK5v/view?usp=sharing)
-contains `datasets/train/{cat,dog}` (10,000
-each), `datasets/val/{cat,dog}` (2,500 each), and `datasets/test` (500 flat
-images). Extract `datasets/` at the repository root. It is ignored by Git.
+contains `datasets/train/{cat,dog}` (10,000 each), `datasets/val/{cat,dog}`
+(2,500 each), and `datasets/test` (500 flat images). Extract `datasets/` at
+the repository root. It is ignored by Git. Shared preprocessing removes the
+19 train images listed in `duplicate_pairs.csv` that overlap validation or
+test, leaving 19,981 training images (9,987 cats; 9,994 dogs). All 5,000
+validation images remain separate from training.
 
 ## Model and preprocessing
 
@@ -38,7 +41,7 @@ The model uses cross-entropy loss, AdamW (weight decay 1e-4), and cosine
 learning-rate decay. All layers are fine-tuned unless `--freeze-backbone` is
 set. The checkpoint with the highest validation accuracy is saved as `best.pt`.
 
-## Measured results
+## Previous 10,000-image results
 
 | Run | Best validation accuracy | Best epoch | Mean seconds/epoch |
 | --- | ---: | ---: | ---: |
@@ -46,6 +49,7 @@ set. The checkpoint with the highest validation accuracy is saved as `best.pt`.
 | 1e-4, seed 1 | 99.50% | 5 | 161 |
 | 3e-4, seed 42 | 99.30% | 5 | 157 |
 
+These runs used 5,000 images per class, not the complete clean training split.
 The two baseline seeds average 99.50% validation accuracy. This is a small
 repeatability check, not a robust estimate of run-to-run variance. The
 validation-selected model is the 1e-4, seed-42 run: it ties on accuracy with
@@ -64,35 +68,30 @@ with ordinary dog photos. A correctly classified example is ID 242, a dark
 cat against a dark background. These observations come from inspecting the
 images and should be phrased as qualitative examples in the group report.
 
-## Experiments
+## Full-data training
 
-First verify a small run. If batch size 32 exhausts MPS memory, use
-`--batch-size 16` for every full run and record that difference from ResNet50.
-
-```sh
-.venv/bin/python convnext/train_convnext.py --train-per-class 20 --val-per-class 10 --epochs 1 --num-workers 0 --out-dir convnext/runs/smoke_mps_b32
-```
-
-The comparable baseline uses 5,000 images per class, all 5,000 validation
-images, 224-pixel inputs, five epochs, batch size 32, and learning rate 1e-4.
-Two baseline seeds give a small reproducibility check. One learning-rate run
-tests sensitivity while keeping other settings fixed:
+The current trainer uses all 19,981 clean training images and all 5,000
+validation images. The default recipe uses 224-pixel inputs, five epochs,
+batch size 32, learning rate 1e-4, and seed 42:
 
 ```sh
 .venv/bin/python convnext/train_convnext.py --seed 42
-.venv/bin/python convnext/train_convnext.py --seed 1
-.venv/bin/python convnext/train_convnext.py --seed 42 --lr 3e-4
-.venv/bin/python convnext/compare_runs.py
 ```
 
+The run folder is `convnext/runs/convnext_tiny_lr0.0001_n19981_e5_s42`.
 Each run writes `history.json` and an ignored `best.pt` in its own folder.
 To use a trained checkpoint on another machine, transfer `best.pt`
 separately or reproduce the run; Git will include the metrics but not weights.
-`compare_runs.py` writes validation-only tables and a training figure in
-`convnext/results/`. `model_comparison.csv` aligns the baseline seeds with
-the existing ResNet50 validation results. The seed table shows the mean and
-sample standard deviation when at least two baseline seeds are complete.
-Results may vary slightly on MPS even with fixed seeds.
+The older `compare_runs.py` tables cover only the 5,000-per-class experiments;
+they do not include the full-data run. Results may vary slightly on MPS even
+with a fixed seed.
+
+The full-data seed-42 run selected epoch 2 by validation accuracy: 99.56%
+(4,978/5,000), with validation loss 0.0136. Its 500-image test submission
+scored 99.40% (497/500; one false positive and two false negatives). The
+earlier 10,000-image seed-42 run scored 99.50% on validation and 99.60% on
+test. One run per setting cannot establish that more data helped or hurt;
+the test scores must not be used to tune or select a checkpoint.
 
 ## Final prediction and report
 
@@ -100,7 +99,7 @@ Choose one run by validation accuracy (validation loss breaks ties), then
 predict the test set once:
 
 ```sh
-.venv/bin/python convnext/predict_convnext.py --run convnext_tiny_lr0.0001_n5000_e5_s42 --evaluate
+.venv/bin/python convnext/predict_convnext.py --run convnext_tiny_lr0.0001_n19981_e5_s42 --evaluate
 ```
 
 Replace the run name with the actual validation-selected run. The command
@@ -110,10 +109,9 @@ checks all 500 image IDs against `test_answer.csv`, writes `submission.csv`
 this final evaluation. Review the listed image paths yourself before
 describing correct and incorrect cases in the report. Do not use test metrics
 to choose hyperparameters or checkpoints. Report the data counts, training
-settings, architecture, validation mean and variation, comparison with
-ResNet50, and final test examples. With two seeds, treat the observed spread
-as indicative rather than a precise uncertainty estimate. Cite TorchVision
-and the ConvNeXt paper.
+settings, architecture, validation accuracy, and final test examples. This
+full-data result has one seed, so it does not estimate run-to-run variation.
+Cite TorchVision and the ConvNeXt paper.
 
 References: [TorchVision ConvNeXt-Tiny](https://docs.pytorch.org/vision/master/models/generated/torchvision.models.convnext_tiny.html),
 [A ConvNet for the 2020s](https://arxiv.org/abs/2201.03545).
