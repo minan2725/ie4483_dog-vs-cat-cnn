@@ -6,6 +6,7 @@ Classify images as dog or cat with convolutional neural networks. Each model liv
 
 ```
 preprocessing.py    shared data pipeline (everyone imports this file)
+dogcat_training.py  shared Dogs vs. Cats training loop and run format
 test_answer.csv     ground-truth labels of the 500 test images (final evaluation only, not for tuning)
 datasets/           the images (NOT in git)
 resnet50/           ResNet50 classifier: code, runs/, results/ and its own README (best weights are described there)
@@ -16,7 +17,7 @@ prepare_cifar10.py  CIFAR-10 dataset preparation (separate task)
 
 ## Conventions (so that results can be compared fairly)
 
-- Use `preprocessing.py` for Dogs vs. Cats. Coordinate changes to its loader interface with every model script that calls it; the current interface returns all clean training images and all validation images.
+- Use `preprocessing.py` and `dogcat_training.py` for Dogs vs. Cats. The default loader returns all clean training images and all validation images; optional per-class limits are for labelled subset experiments.
 - Labels: `cat = 0`, `dog = 1`.
 - The proposed full-data reference settings are in [EXPERIMENT_PROTOCOL.md](EXPERIMENT_PROTOCOL.md). Existing 5000-per-class runs are historical subset experiments, not full-data runs.
 - The latest ConvNeXt training result is in [convnext/FULL_DATA_REPORT.md](convnext/FULL_DATA_REPORT.md).

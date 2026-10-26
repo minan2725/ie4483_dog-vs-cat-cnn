@@ -5,9 +5,9 @@ This file handles image loading, resizing, normalization, data augmentation,
 duplicate removal, random seeds, and DataLoader creation.
 Training augmentation can be disabled for experiments.
 
-Data used for training: ALL images in datasets/train, except the train images that are
-also present in val/ or test/ (perceptual duplicates, listed in
-duplicate_pairs.csv next to this file). Validation uses ALL images in datasets/val.
+By default, training uses all images in datasets/train except those that also
+appear in val/ or test/ (listed in duplicate_pairs.csv). Validation uses all
+images in datasets/val. Optional balanced limits support smoke tests.
 """
 import csv
 import os
@@ -114,8 +114,25 @@ def clean_train_indices(train_ds, train_root, csv_path=DUPLICATES_CSV):
     return keep
 
 
-def get_loaders(batch_size=32, num_workers=4, data_dir=DATA_DIR,
-                img_size=IMG_SIZE, augment=True, seed=SEED):
+def class_balanced_indices(dataset, eligible_indices, per_class, seed=SEED):
+    """Pick a fixed, balanced subset from eligible ImageFolder indices."""
+    if not per_class:
+        return eligible_indices
+    rng = random.Random(seed)
+    by_class = {}
+    for i in eligible_indices:
+        by_class.setdefault(dataset.samples[i][1], []).append(i)
+    chosen = []
+    for label, indices in sorted(by_class.items()):
+        if len(indices) < per_class:
+            raise ValueError(f"Class {label} has {len(indices)} images, fewer than {per_class} requested")
+        chosen.extend(rng.sample(indices, per_class))
+    return sorted(chosen)
+
+
+def get_loaders(train_per_class=None, val_per_class=None, batch_size=32,
+                num_workers=4, data_dir=DATA_DIR, img_size=IMG_SIZE,
+                augment=True, seed=SEED):
     data_dir = Path(data_dir)
     train_tf, eval_tf = get_transforms(img_size, augment)
     train_ds = datasets.ImageFolder(data_dir / "train", transform=train_tf, loader=rgb_loader)
@@ -123,8 +140,12 @@ def get_loaders(batch_size=32, num_workers=4, data_dir=DATA_DIR,
     # Label convention required by the brief: 0 = cat, 1 = dog
     assert train_ds.class_to_idx == {"cat": 0, "dog": 1}, train_ds.class_to_idx
 
-    # All train images except the duplicates; all val images. No random subsampling.
-    train_sub = Subset(train_ds, clean_train_indices(train_ds, data_dir / "train"))
+    # Subsets are sampled after duplicate removal and do not depend on the run seed.
+    train_indices = clean_train_indices(train_ds, data_dir / "train")
+    train_indices = class_balanced_indices(train_ds, train_indices, train_per_class)
+    train_sub = Subset(train_ds, train_indices)
+    val_data = (Subset(val_ds, class_balanced_indices(
+        val_ds, list(range(len(val_ds))), val_per_class)) if val_per_class else val_ds)
 
     # The seed controls the shuffling order and the random augmentation of each run.
     g = torch.Generator()
@@ -132,7 +153,7 @@ def get_loaders(batch_size=32, num_workers=4, data_dir=DATA_DIR,
     train_loader = DataLoader(train_sub, batch_size=batch_size, shuffle=True,
                               num_workers=num_workers, generator=g,
                               persistent_workers=num_workers > 0)
-    val_loader = DataLoader(val_ds, batch_size=batch_size, shuffle=False,
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,
                             num_workers=num_workers,
                             persistent_workers=num_workers > 0)
     return train_loader, val_loader

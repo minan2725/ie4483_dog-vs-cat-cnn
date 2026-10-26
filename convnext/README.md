@@ -78,6 +78,12 @@ batch size 32, learning rate 1e-4, and seed 42:
 .venv/bin/python convnext/train_convnext.py --seed 42
 ```
 
+The entry point now uses the shared `dogcat_training.py` pipeline, with the
+same CLI and run format as ResNet50 and VGG16. Use `--train-per-class` and
+`--val-per-class` for a labelled subset run, or `--predict-test` to write a
+submission after training. An existing run directory requires a different
+`--out-dir` or an explicit `--overwrite`.
+
 The run folder is `convnext/runs/convnext_tiny_lr0.0001_n19981_e5_s42`.
 Each run writes `history.json` and an ignored `best.pt` in its own folder.
 To use a trained checkpoint on another machine, transfer `best.pt`

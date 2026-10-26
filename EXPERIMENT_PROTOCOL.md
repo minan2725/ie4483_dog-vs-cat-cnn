@@ -1,6 +1,6 @@
 # Proposed Dogs vs. Cats training protocol
 
-This is a shared reporting convention, not a new training framework. It defines a comparable reference run for each architecture while leaving model-specific experiments in each model folder. The ConvNeXt full-data run follows this convention; the older ResNet50 and VGG16 scripts still need to be updated for the current `preprocessing.get_loaders()` interface before they can run it.
+This defines a comparable reference run for each architecture while leaving model-specific experiments in each model folder. The ConvNeXt, ResNet50, and VGG16 entry points now use `dogcat_training.py` for the common CLI, training loop, checkpoint selection, run history, and optional test prediction. Older run records remain unchanged; the full-data ConvNeXt result predates this refactor but used the same reference settings.
 
 ## Common reference run
 
@@ -20,7 +20,9 @@ If a model cannot use a common setting (for example, a smaller batch size for me
 
 ## Run record and report
 
-Keep each run in its model's `runs/<model>_lr<rate>_n19981_e5_s<seed>/` folder. Save `history.json` with the arguments, device, package versions, actual train/validation counts, best epoch, best validation accuracy, and per-epoch train/validation loss, accuracy, and time. Keep `best.pt` local because weights are ignored by Git. Save the final `submission.csv`, probability file, and final metrics next to the run record. Where practical, record a Git commit and dataset fingerprint too; those fields are proposed, not present in every current script.
+Keep each run in its model's `runs/<model>_lr<rate>_n19981_e5_s<seed>/` folder. The shared pipeline saves `history.json` with the arguments, device, PyTorch version, actual train/validation counts, best epoch, best validation accuracy, and per-epoch train/validation loss, accuracy, and time. Keep `best.pt` local because weights are ignored by Git. Optional test prediction writes `submission.csv` and `test_probs.csv`; save final test metrics separately after choosing the run. Recording a Git commit and dataset fingerprint remains a future improvement.
+
+From the repository root, run `.venv/bin/python <model>/train_<model>.py` for the common full-data reference settings. Use `--train-per-class` and `--val-per-class` only for explicitly labelled subset experiments, `--out-dir` for a separate run folder, and `--predict-test` only after deciding to generate predictions from the validation-selected checkpoint. The training command writes predictions without reading test labels; final test metrics are a separate evaluation step.
 
 For the group report, use one compact table with model, train/validation counts, pretrained status, input size, epochs, batch size, learning rate, seed, best validation accuracy, and test accuracy. State how the checkpoint was chosen and describe one or two prediction examples. Compare validation results only when splits and evaluation transforms match. A single seed is a result, not an estimate of run-to-run variation.
 

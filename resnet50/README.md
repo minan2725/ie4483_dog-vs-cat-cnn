@@ -1,6 +1,6 @@
 # ResNet50 classifier (dogs vs. cats)
 
-ImageNet-pretrained ResNet50 whose last layer is replaced by a 2-class layer and fine-tuned on 5,000 images per class.
+ImageNet-pretrained ResNet50 whose last layer is replaced by a 2-class layer. The results below are historical 5,000-per-class runs; the current trainer defaults to all 19,981 clean training images through the shared `dogcat_training.py` pipeline.
 All commands below are run from the **repository root**.
 
 ## Best model (use this one)
@@ -38,15 +38,17 @@ Output: 2 logits, index 0 = cat, index 1 = dog (apply softmax for probabilities)
 
 | Path                  | Purpose                                                                                                                                                                                      |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `train_resnet50.py` | Trains one run, writes`runs/<settings>/` with `history.json`, `submission.csv`, `test_probs.csv` (weights `best.pt` are ignored by git)                                            |
+| `train_resnet50.py` | Trains one run and writes `history.json` and ignored `best.pt`; `--predict-test` also writes `submission.csv` and `test_probs.csv` |
 | `compare_runs.py`   | Compares all runs, writes tables and figures to`results/` (needs `test_answer.csv` at the repo root). Tied to the settings of `train_resnet50.py`; copy and adapt it for another model |
 | `runs/`             | One folder per experiment (12 runs: seeds, learning rate, frozen backbone, augmentation, data size, image size, from scratch)                                                                |
 | `results/`          | `summary.csv` (all runs), `seeds.csv` (mean and std over seeds), `error_analysis.csv`, figures `fig_*.png`                                                                           |
 
 ### Reproduce
 
+```sh
+.venv/bin/python resnet50/train_resnet50.py              # new full-data reference run, seed 42
+.venv/bin/python resnet50/train_resnet50.py --train-per-class 5000 --seed 1 --out-dir /tmp/resnet50-subset-repeat
+.venv/bin/python resnet50/compare_runs.py                # historical tables and figures
 ```
-python3 resnet50/train_resnet50.py              # baseline, seed 42
-python3 resnet50/train_resnet50.py --seed 1
-python3 resnet50/compare_runs.py                # tables and figures
-```
+
+The training CLI matches ConvNeXt and VGG16. `--train-per-class` and `--val-per-class` are for subset experiments; test prediction is opt-in with `--predict-test`.
