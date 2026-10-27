@@ -389,23 +389,52 @@ def main():
     optimizer = torch.optim.AdamW(trainable, lr=args.lr, weight_decay=1e-4)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
+    
     history, best_f1, best_epoch = [], -1.0, 0
+    patience = 3
+    epochs_without_improvement = 0
+
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
         tr_loss, tr_f1 = run_epoch(
-            model, train_loader, criterion, device, optimizer, feature_input=feature_input
+            model, train_loader, criterion, device, optimizer,
+            feature_input=feature_input
         )
-        # Validate on the original, unresampled validation images through the full model.
+
+        # Validate on the original validation images.
         va_loss, va_f1 = run_epoch(model, val_loader, criterion, device)
         scheduler.step()
+
         secs = time.time() - t0
-        history.append(dict(epoch=epoch, train_loss=tr_loss, train_f1=tr_f1,
-                            val_loss=va_loss, val_f1=va_f1, time_s=secs))
-        print(f"Epoch {epoch}/{args.epochs} | train loss {tr_loss:.4f} F1-score {tr_f1:.4f} | "
-              f"val loss {va_loss:.4f} F1-score {va_f1:.4f} | {secs:.0f}s")
+        history.append(dict(
+            epoch=epoch, train_loss=tr_loss, train_f1=tr_f1,
+            val_loss=va_loss, val_f1=va_f1, time_s=secs
+        ))
+        print(
+            f"Epoch {epoch}/{args.epochs} | train loss {tr_loss:.4f} "
+            f"F1-score {tr_f1:.4f} | val loss {va_loss:.4f} "
+            f"F1-score {va_f1:.4f} | {secs:.0f}s"
+        )
+
         if va_f1 > best_f1:
             best_f1, best_epoch = va_f1, epoch
+            epochs_without_improvement = 0
             torch.save(model.state_dict(), out_dir / "best.pt")
+        else:
+            epochs_without_improvement += 1
+            print(
+                f"No validation F1 improvement for "
+                f"{epochs_without_improvement}/{patience} epochs."
+            )
+
+        if epochs_without_improvement >= patience:
+            print(
+                f"Early stopping at epoch {epoch}. "
+                f"Best validation F1-score: {best_f1:.4f} "
+                f"(epoch {best_epoch})."
+            )
+            break
+
 
     summary = dict(
         args=vars(args), device=str(device),

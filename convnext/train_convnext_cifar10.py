@@ -208,19 +208,45 @@ def main():
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
 
     history, best_acc, best_epoch = [], 0.0, 0
+    patience = 3
+    epochs_without_improvement = 0
+
     for epoch in range(1, args.epochs + 1):
         t0 = time.time()
         tr_loss, tr_acc = run_epoch(model, train_loader, criterion, device, optimizer)
         va_loss, va_acc = run_epoch(model, val_loader, criterion, device)
         scheduler.step()
+
         secs = time.time() - t0
-        history.append(dict(epoch=epoch, train_loss=tr_loss, train_acc=tr_acc,
-                            val_loss=va_loss, val_acc=va_acc, time_s=secs))
-        print(f"Epoch {epoch}/{args.epochs} | train loss {tr_loss:.4f} acc {tr_acc:.4f} | "
-              f"val loss {va_loss:.4f} acc {va_acc:.4f} | {secs:.0f}s")
+        history.append(dict(
+            epoch=epoch, train_loss=tr_loss, train_acc=tr_acc,
+            val_loss=va_loss, val_acc=va_acc, time_s=secs
+        ))
+        print(
+            f"Epoch {epoch}/{args.epochs} | train loss {tr_loss:.4f} "
+            f"acc {tr_acc:.4f} | val loss {va_loss:.4f} "
+            f"acc {va_acc:.4f} | {secs:.0f}s"
+        )
+
         if va_acc > best_acc:
             best_acc, best_epoch = va_acc, epoch
+            epochs_without_improvement = 0
             torch.save(model.state_dict(), out_dir / "best.pt")
+        else:
+            epochs_without_improvement += 1
+            print(
+                f"No validation accuracy improvement for "
+                f"{epochs_without_improvement}/{patience} epochs."
+            )
+
+        if epochs_without_improvement >= patience:
+            print(
+                f"Early stopping at epoch {epoch}. "
+                f"Best validation accuracy: {best_acc:.4f} "
+                f"(epoch {best_epoch})."
+            )
+            break
+
 
     summary = dict(args=vars(args), device=str(device),
                    train_images=len(train_loader.dataset), val_images=len(val_loader.dataset),
