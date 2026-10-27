@@ -23,7 +23,7 @@ def parse_training_args(model_name, argv=None):
                         help="0 uses all clean training images")
     parser.add_argument("--val-per-class", type=int, default=0,
                         help="0 uses all validation images")
-    parser.add_argument("--epochs", type=int, default=5)
+    parser.add_argument("--epochs", type=int, default=10)
     parser.add_argument("--lr", type=float, default=1e-4)
     parser.add_argument("--batch-size", type=int, default=32)
     parser.add_argument("--num-workers", type=int, default=4)
@@ -176,6 +176,7 @@ def train_model(model_name, model_factory, args, runs_dir=None):
     summary = dict(args={**vars(args), "out_dir": str(out_dir)}, device=str(device),
                    torch_version=torch.__version__, train_images=len(train_loader.dataset),
                    val_images=len(val_loader.dataset),
+                   total_params=sum(p.numel() for p in model.parameters()),
                    trainable_params=sum(p.numel() for p in trainable),
                    best_val_acc=best_acc, best_epoch=best_epoch,
                    completed=True, history=history)

@@ -1,54 +1,29 @@
-# ResNet50 classifier (dogs vs. cats)
+# Dogs vs. Cats training protocol
 
-ImageNet-pretrained ResNet50 whose last layer is replaced by a 2-class layer. The results below are historical 5,000-per-class runs; the current trainer defaults to all 19,981 clean training images through the shared `dogcat_training.py` pipeline.
-All commands below are run from the **repository root**.
+This defines a comparable reference run for each architecture while leaving model-specific experiments in each model folder. The ConvNeXt, ResNet50, and VGG16 entry points use `dogcat_training.py` for the common CLI, training loop, checkpoint selection, run history, and optional test prediction. Everyone trains on their own machine; the ResNet50 plan in section 2 is a suggestion so that the three models can be compared, not a limit on what anyone else may run.
 
-## Best model (use this one)
+## 1. Common reference run
 
-| Item                              | Value                                                                                            |
-| --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Run folder                        | `resnet50/runs/resnet50_lr0.0001_n5000_e5_s1/` (seed 1)                                        |
-| Validation accuracy               | **99.36 %** (5,000 validation images)                                                      |
-| Same settings, 3 seeds (42, 1, 2) | 99.32 +/- 0.05 % validation, see`resnet50/results/seeds.csv`                                   |
-| Test accuracy                     | 99.40 % (497 / 500 images), precision 99.61 %, recall 99.23 %, F1 99.42 % (dog = positive class) |
-| Weights file                      | `resnet50/runs/resnet50_lr0.0001_n5000_e5_s1/best.pt` (about 95 MB)                            |
-| Predictions                       | `resnet50/runs/resnet50_lr0.0001_n5000_e5_s1/submission.csv`                                   |
+| Item               | Convention                                                                                                                                                                                                |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data               | Use`preprocessing.get_loaders()` and all 19,981 clean training images (19 duplicates of val/test images removed); keep all 5,000 validation images out of training. No random subsets in reported runs. |
+| Labels             | `cat=0`, `dog=1`.                                                                                                                                                                                     |
+| Input              | RGB, 224 x 224 (fixed: the size the ImageNet weights were trained at); use the shared training and evaluation transforms.                                                                                 |
+| Initialization     | Start from ImageNet-pretrained weights and fine-tune all layers; record exceptions.                                                                                                                       |
+| Loss and optimizer | Cross-entropy and AdamW, weight decay`1e-4`, reference learning rate `1e-4`.                                                                                                                          |
+| Batch size         | 32. Any other value is passed with`--batch-size` and must be mentioned in the report.                                                                                                                   |
+| Epochs             | 10                                                                                                                                                                                                        |
+| Checkpoint         | Highest validation accuracy; ties are broken by the lower validation loss.                                                                                                                                |
+| Randomness         | Seed 42 for all experiments; the best configuration is repeated with seeds 1 and 2. Report mean and sample standard deviation over the 3 seeds.                                                           |
+| Test               | Generate all 500`id,label` rows after selection (`--predict-test`). Consult `test_answer.csv` only for final evaluation, never for tuning.                                                          |
 
-Training settings: pretrained weights (`IMAGENET1K_V2`), all layers fine-tuned, AdamW, learning rate 1e-4 with cosine decay, weight decay 1e-4, batch size 32, 5 epochs, 224x224 input, augmentation on (random crop, flip, rotation, colour jitter), ImageNet normalisation.
+## 2. Suggested experiments (what ResNet50 runs; match it so the models are comparable)
 
-## Load the weights
+| # | Runs                                                                                     | What it lets us conclude                                                                                                               |
+| - | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| 1 | Fine-tuning at learning rate 1e-5, 1e-4, 1e-3 (3 runs)                                   | Which learning rate to use and why: too small converges slowly, too large damages the pretrained features. The winner is the baseline. |
+| 2 | Baseline without augmentation (1 run)                                                    | Whether augmentation is kept, read from validation accuracy and the train-validation gap.                                              |
+| 3 | Best configuration of 1 and 2 with seeds 1 and 2 (2 runs)                                | Mean and std of the final model, and the noise level: a difference between runs smaller than about 2 std is not evidence.              |
+| 4 | Training from scratch at lr 1e-3, same batch size and epoch limit (1 run, ResNet50 only) | How much the pretrained weights contribute. If training is still improving at the epoch limit, the gap is a lower bound.               |
 
-```python
-import sys
-import torch
-sys.path.insert(0, "resnet50")
-from train_resnet50 import build_model
-
-# scratch=True only builds the architecture without downloading ImageNet weights;
-# the trained weights are loaded from the file right after.
-model = build_model(freeze_backbone=False, scratch=True)
-model.load_state_dict(torch.load("resnet50_seed1.pt", map_location="cpu"))
-model.eval()
-```
-
-Input: tensor of shape (N, 3, 224, 224) preprocessed with `preprocessing.get_transforms()[1]` (resize 256, centre-crop 224, ImageNet normalisation).
-Output: 2 logits, index 0 = cat, index 1 = dog (apply softmax for probabilities).
-
-## Files and results in this folder
-
-| Path                  | Purpose                                                                                                                                                                                      |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `train_resnet50.py` | Trains one run and writes `history.json` and ignored `best.pt`; `--predict-test` also writes `submission.csv` and `test_probs.csv` |
-| `compare_runs.py`   | Compares all runs, writes tables and figures to`results/` (needs `test_answer.csv` at the repo root). Tied to the settings of `train_resnet50.py`; copy and adapt it for another model |
-| `runs/`             | One folder per experiment (12 runs: seeds, learning rate, frozen backbone, augmentation, data size, image size, from scratch)                                                                |
-| `results/`          | `summary.csv` (all runs), `seeds.csv` (mean and std over seeds), `error_analysis.csv`, figures `fig_*.png`                                                                           |
-
-### Reproduce
-
-```sh
-.venv/bin/python resnet50/train_resnet50.py              # new full-data reference run, seed 42
-.venv/bin/python resnet50/train_resnet50.py --train-per-class 5000 --seed 1 --out-dir /tmp/resnet50-subset-repeat
-.venv/bin/python resnet50/compare_runs.py                # historical tables and figures
-```
-
-The training CLI matches ConvNeXt and VGG16. `--train-per-class` and `--val-per-class` are for subset experiments; test prediction is opt-in with `--predict-test`.
+Not run, on purpose: input size (fixed at 224), frozen backbone (it only tells us that updating the backbone helps), and a reduced-data run (a difference of a few images in 5,000 cannot be separated from seed noise).
