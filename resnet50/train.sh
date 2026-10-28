@@ -8,7 +8,7 @@ python resnet50/train_resnet50.py --lr 1e-4 --seed 42
 python resnet50/train_resnet50.py --lr 1e-3 --seed 42 
 
 # After step 1, put the best learning rate here (highest validation accuracy):
-LR=1e-4
+LR=1e-5
 
 # 2. Augmentation off, at the best learning rate
 python resnet50/train_resnet50.py --lr $LR --seed 42 --no-augment 

@@ -1,0 +1,9 @@
+status,id,image_path,true,pred,prob_cat,prob_dog
+correct_low_confidence,261,cached_256/test/261.jpg,1,1,0.4915078580379486,0.508492112159729
+correct_low_confidence,242,cached_256/test/242.jpg,0,0,0.5395110845565796,0.4604889154434204
+correct_low_confidence,328,cached_256/test/328.jpg,1,1,0.45257893204689026,0.5474210381507874
+correct_low_confidence,245,cached_256/test/245.jpg,1,1,0.44822943210601807,0.5517705678939819
+correct_low_confidence,464,cached_256/test/464.jpg,1,1,0.40880343317985535,0.5911965370178223
+correct_low_confidence,428,cached_256/test/428.jpg,0,0,0.7472158074378967,0.2527841329574585
+correct_low_confidence,495,cached_256/test/495.jpg,1,1,0.2341151088476181,0.7658848166465759
+correct_low_confidence,216,cached_256/test/216.jpg,0,0,0.8554250597953796,0.14457494020462036

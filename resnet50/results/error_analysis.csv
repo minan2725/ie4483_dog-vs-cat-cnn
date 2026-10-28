@@ -1,0 +1,9 @@
+id,status,true,pred,prob_cat,prob_dog
+261,correct_low_confidence,dog,dog,0.4915,0.5085
+242,correct_low_confidence,cat,cat,0.5395,0.4605
+328,correct_low_confidence,dog,dog,0.4526,0.5474
+245,correct_low_confidence,dog,dog,0.4482,0.5518
+464,correct_low_confidence,dog,dog,0.4088,0.5912
+428,correct_low_confidence,cat,cat,0.7472,0.2528
+495,correct_low_confidence,dog,dog,0.2341,0.7659
+216,correct_low_confidence,cat,cat,0.8554,0.1446
