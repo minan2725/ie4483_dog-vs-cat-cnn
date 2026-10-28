@@ -224,15 +224,26 @@ def main():
         curves([(r, f"lr={r['cfg']['lr']:g}") for r in lr_runs],
                "Effect of learning rate (ResNet50, pretrained)", "fig_learning_rate.png")
 
-    # ---- 2. augmentation
-    noaug = find(runs, lr=base["cfg"]["lr"], noaug=True)
-    if noaug:
-        print(f"\n2. AUGMENTATION at lr={base['cfg']['lr']:g}, seed 42")
-        table(["setting", "best val %", "final val %", "final train %", "gap pp", "final val loss"],
-              [[n, f"{100 * r['best_val']:.2f}", f"{100 * r['val']:.2f}", f"{100 * r['train']:.2f}",
-                f"{100 * r['gap']:.2f}", f"{r['val_loss']:.4f}"] for n, r in (("augmentation", base), ("no augmentation", noaug))])
-        train_vs_val([(base, "augmentation"), (noaug, "no augmentation")],
-                     f"Effect of augmentation (lr={base['cfg']['lr']:g})", "fig_augmentation.png")
+    # ---- 2. augmentation (every seed that exists for both settings)
+    lr0 = base["cfg"]["lr"]
+    noaug_runs = [r for r in runs if r["cfg"]["noaug"] and not r["cfg"]["scratch"]
+                  and r["cfg"]["lr"] == lr0 and r["cfg"]["epochs"] == EPOCHS]
+    common = sorted({r["cfg"]["seed"] for r in noaug_runs} & {r["cfg"]["seed"] for r in seeds})
+    if common:
+        print(f"\n2. AUGMENTATION at lr={lr0:g}, seeds {common}")
+        rows2 = []
+        for name, group in (("augmentation", seeds), ("no augmentation", noaug_runs)):
+            g = sorted([r for r in group if r["cfg"]["seed"] in common], key=lambda r: r["cfg"]["seed"])
+            for r in g:
+                rows2.append([name, r["cfg"]["seed"], f"{100 * r['best_val']:.2f}", f"{100 * r['val']:.2f}",
+                              f"{100 * r['train']:.2f}", f"{100 * r['gap']:.2f}", f"{r['val_loss']:.4f}"])
+            m = lambda k: statistics.mean(r[k] for r in g)
+            rows2.append([name, "mean", f"{100 * m('best_val'):.2f}", f"{100 * m('val'):.2f}",
+                          f"{100 * m('train'):.2f}", f"{100 * m('gap'):.2f}", f"{m('val_loss'):.4f}"])
+        table(["setting", "seed", "best val %", "final val %", "final train %", "gap pp", "final val loss"], rows2)
+        pair = (find(runs, lr=lr0, seed=common[0]), find(runs, lr=lr0, seed=common[0], noaug=True))
+        train_vs_val([(pair[0], "augmentation"), (pair[1], "no augmentation")],
+                     f"Effect of augmentation (lr={lr0:g}, seed {common[0]})", "fig_augmentation.png")
 
     # ---- 3. seeds
     if len(seeds) > 1:
@@ -277,7 +288,7 @@ def main():
             v = [h["val_acc"] for h in r["hist"]]
             gain = v[-1] - v[-4]
             print(f"  scratch val acc gain over its last 3 epochs: {100 * gain:+.2f} pp"
-                  + (" (still improving -> the gap to pretrained is a lower bound)" if gain > 0.001 else ""))
+                  + (" (still improving -> the measured gap to pretrained is an upper bound of the gap at convergence)" if gain > 0.001 else ""))
         curves(items, "Pretrained vs random initialisation", "fig_pretrained_vs_scratch.png")
 
     # ---- test analysis of the chosen run
