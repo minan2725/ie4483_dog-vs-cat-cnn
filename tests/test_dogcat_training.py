@@ -54,7 +54,7 @@ class TrainingPipelineTests(unittest.TestCase):
         args = parse_training_args("convnext_tiny", [])
         self.assertEqual((args.train_per_class, args.val_per_class, args.seed), (0, 0, 42))
         self.assertEqual(default_run_name("convnext_tiny", args, 19981),
-                         "convnext_tiny_lr0.0001_n19981_e5_s42")
+                         "convnext_tiny_lr0.0001_n19981_e10_s42")
 
     def test_train_writes_reloadable_checkpoint_and_history(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -72,6 +72,7 @@ class TrainingPipelineTests(unittest.TestCase):
             self.assertEqual((history["train_images"], history["val_images"]), (4, 4))
             self.assertEqual(history["best_epoch"], 1)
             self.assertEqual(len(history["history"]), 1)
+            self.assertEqual((history["total_params"], history["trainable_params"]), (98, 98))
             model = nn.Sequential(nn.Flatten(), nn.Linear(48, 2))
             model.load_state_dict(torch.load(Path(temp) / "best.pt", weights_only=True))
             self.assertEqual(tuple(model(dataset[0][0].unsqueeze(0)).shape), (1, 2))

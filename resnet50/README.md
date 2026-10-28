@@ -1,54 +1,136 @@
-# ResNet50 classifier (dogs vs. cats)
+# ResNet50 results
 
-ImageNet-pretrained ResNet50 whose last layer is replaced by a 2-class layer. The results below are historical 5,000-per-class runs; the current trainer defaults to all 19,981 clean training images through the shared `dogcat_training.py` pipeline.
-All commands below are run from the **repository root**.
+Reproduce all tables and figures: `python resnet50/compare_runs.py`
 
-## Best model (use this one)
+## Setup
 
-| Item                              | Value                                                                                            |
-| --------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Run folder                        | `resnet50/runs/resnet50_lr0.0001_n5000_e5_s1/` (seed 1)                                        |
-| Validation accuracy               | **99.36 %** (5,000 validation images)                                                      |
-| Same settings, 3 seeds (42, 1, 2) | 99.32 +/- 0.05 % validation, see`resnet50/results/seeds.csv`                                   |
-| Test accuracy                     | 99.40 % (497 / 500 images), precision 99.61 %, recall 99.23 %, F1 99.42 % (dog = positive class) |
-| Weights file                      | `resnet50/runs/resnet50_lr0.0001_n5000_e5_s1/best.pt` (about 95 MB)                            |
-| Predictions                       | `resnet50/runs/resnet50_lr0.0001_n5000_e5_s1/submission.csv`                                   |
+- ResNet50 pretrained on ImageNet, all layers fine-tuned (scratch run: random start)
+- 19,981 train, 5,000 val, 500 test images, 224 x 224
+- AdamW (weight decay 1e-4), cosine LR schedule, batch size 32, seed 42 unless stated
+- 10 epochs, no early stopping (scratch run: 20 epochs)
+- Saved model = the epoch with the highest val accuracy
 
-Training settings: pretrained weights (`IMAGENET1K_V2`), all layers fine-tuned, AdamW, learning rate 1e-4 with cosine decay, weight decay 1e-4, batch size 32, 5 epochs, 224x224 input, augmentation on (random crop, flip, rotation, colour jitter), ImageNet normalisation.
+## All runs
 
-## Load the weights
+| Run | Best val % (epoch) | Last-epoch val % | Last-epoch val loss | Train-val gap (pp) |
+| --- | --- | --- | --- | --- |
+| lr 1e-5 (baseline) | **99.50** (9) | 99.42 | 0.0173 | 0.34 |
+| lr 1e-4 | 99.40 (8) | 99.38 | 0.0195 | 0.57 |
+| lr 1e-3 | 98.50 (10) | 98.50 | 0.0427 | 0.98 |
+| lr 1e-5, no augmentation | 99.40 (5) | 99.34 | 0.0210 | 0.60 |
+| lr 1e-5, no augmentation, seed 1 | 99.44 (4) | 99.44 | 0.0194 | 0.46 |
+| lr 1e-5, seed 1 | 99.46 (6) | 99.38 | 0.0154 | 0.34 |
+| lr 1e-5, seed 2 | 99.44 (7) | 99.34 | 0.0173 | 0.42 |
+| From scratch, lr 1e-3, 20 epochs | 96.28 (20) | 96.28 | 0.1043 | 0.25 |
+
+- Best val = the best epoch out of 10. This is the model we keep.
+- Last-epoch val = epoch 10.
+- Gap = train accuracy minus val accuracy at the last epoch.
+- Noise: the 3 seeds differ by 0.06 pp (3 images). Differences near 0.1 pp (5 images) are small.
+
+## 1. Learning rate
+
+Figure: `results/fig_learning_rate.png`
+
+**Conclusion: use lr 1e-5.**
+
+- lr 1e-3 is the worst (98.50%). After epoch 1 its val accuracy is only 92.56%, while the others are above 99%. A big learning rate damages the pretrained weights.
+- lr 1e-4 and 1e-5 have almost the same accuracy (5 images apart). lr 1e-5 has a lower val loss, a smaller gap and a smoother curve (lr 1e-4 dips at epoch 4).
+- lr 1e-4 and 1e-3 have one seed only.
+
+## 2. Augmentation
+
+Figure: `results/fig_augmentation.png`
+
+| Setting | Seed | Best val % | Last-epoch val % | Last-epoch val loss | Gap (pp) |
+| --- | --- | --- | --- | --- | --- |
+| Augmentation | 42 | 99.50 | 99.42 | 0.0173 | 0.34 |
+| Augmentation | 1 | 99.46 | 99.38 | 0.0154 | 0.34 |
+| **Augmentation, mean** | | **99.48** | **99.40** | **0.0164** | **0.34** |
+| No augmentation | 42 | 99.40 | 99.34 | 0.0210 | 0.60 |
+| No augmentation | 1 | 99.44 | 99.44 | 0.0194 | 0.46 |
+| **No augmentation, mean** | | **99.42** | **99.39** | **0.0202** | **0.53** |
+
+**Conclusion: keep augmentation. The reason is less overfitting, not higher accuracy.**
+
+- Accuracy is about the same. Best val differs by 0.06 pp (3 images). Last-epoch val is 99.40 vs 99.39.
+- Val loss is lower with augmentation in both seeds (0.0173 vs 0.0210, 0.0154 vs 0.0194).
+- The gap is smaller with augmentation in both seeds (0.34 vs 0.60, 0.34 vs 0.46).
+- Without augmentation, train accuracy reaches about 99.9% and val loss stops improving after epoch 4 or 5. With augmentation, val loss keeps improving until epoch 8 or 9.
+- Two seeds per setting only.
+
+## 3. Seeds
+
+Seeds 42, 1, 2 of the baseline. File: `results/seeds.csv`.
+
+| Metric | Mean % | Std % |
+| --- | --- | --- |
+| Best val accuracy | 99.47 | 0.03 |
+| Last-epoch val accuracy | 99.38 | 0.04 |
+
+**Conclusion: the baseline is stable. Final val result: 99.47 ± 0.03%.**
+
+- lr 1e-3 and scratch are far below the noise level, so these differences are real.
+- lr 1e-4 is 0.10 pp lower. This is just above 2 std (0.06 pp), so the evidence is weak.
+
+## 4. Pretrained vs scratch
+
+Figure: `results/fig_pretrained_vs_scratch.png`
+
+| Run | Epochs | Best val % |
+| --- | --- | --- |
+| Pretrained, lr 1e-5 | 10 | 99.50 |
+| Pretrained, lr 1e-3 | 10 | 98.50 |
+| Scratch, lr 1e-3 | 20 | 96.28 |
+
+**Conclusion: pretrained weights help a lot.**
+
+- Scratch has twice the epochs and is still 3.22 pp lower (2.22 pp lower at the same lr 1e-3).
+- Scratch is still improving at epoch 20 (+0.50 pp in the last 3 epochs). So the real gap at convergence is smaller than 3.22 pp.
+
+## Final model and test result
+
+Final model: `resnet50/runs/resnet50_lr1e-05_n19981_e10_s42/best.pt` (best val 99.50%, epoch 9). It was chosen by val accuracy only.
+
+Test labels were used once, for this model only.
+
+| Metric (dog = positive) | Value |
+| --- | --- |
+| Accuracy | 100% (500/500) |
+| Confusion counts | TN 241, FP 0, FN 0, TP 259 |
+
+Figures: `results/fig_confusion_matrix.png`, `results/fig_error_samples.png`.
+
+There are no wrong images, so `fig_error_samples.png` shows the 8 correct images with the lowest confidence. With 0 errors in 500 images, the true error rate could still be up to about 0.6%.
+
+## Reproduce
+
+```bash
+python resnet50/train_resnet50.py --lr 1e-5 --seed 42
+python resnet50/train_resnet50.py --lr 1e-4 --seed 42
+python resnet50/train_resnet50.py --lr 1e-3 --seed 42
+python resnet50/train_resnet50.py --lr 1e-5 --seed 42 --no-augment
+python resnet50/train_resnet50.py --lr 1e-5 --seed 1 --no-augment
+python resnet50/train_resnet50.py --lr 1e-5 --seed 1
+python resnet50/train_resnet50.py --lr 1e-5 --seed 2
+python resnet50/train_resnet50.py --scratch --lr 1e-3 --epochs 20 --seed 42
+
+python resnet50/compare_runs.py
+python resnet50/predict_resnet50.py --run resnet50_lr1e-05_n19981_e10_s42 --evaluate
+python resnet50/compare_runs.py   # run again to draw the test figures
+```
+
+## Reuse the weights
 
 ```python
-import sys
 import torch
-sys.path.insert(0, "resnet50")
-from train_resnet50 import build_model
+from resnet50.train_resnet50 import build_model
 
-# scratch=True only builds the architecture without downloading ImageNet weights;
-# the trained weights are loaded from the file right after.
-model = build_model(freeze_backbone=False, scratch=True)
-model.load_state_dict(torch.load("resnet50_seed1.pt", map_location="cpu"))
+model = build_model(scratch=True)  # only builds the architecture, best.pt has all weights
+state = torch.load("resnet50/runs/resnet50_lr1e-05_n19981_e10_s42/best.pt",
+                   map_location="cpu", weights_only=True)
+model.load_state_dict(state)
 model.eval()
 ```
 
-Input: tensor of shape (N, 3, 224, 224) preprocessed with `preprocessing.get_transforms()[1]` (resize 256, centre-crop 224, ImageNet normalisation).
-Output: 2 logits, index 0 = cat, index 1 = dog (apply softmax for probabilities).
-
-## Files and results in this folder
-
-| Path                  | Purpose                                                                                                                                                                                      |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `train_resnet50.py` | Trains one run and writes `history.json` and ignored `best.pt`; `--predict-test` also writes `submission.csv` and `test_probs.csv` |
-| `compare_runs.py`   | Compares all runs, writes tables and figures to`results/` (needs `test_answer.csv` at the repo root). Tied to the settings of `train_resnet50.py`; copy and adapt it for another model |
-| `runs/`             | One folder per experiment (12 runs: seeds, learning rate, frozen backbone, augmentation, data size, image size, from scratch)                                                                |
-| `results/`          | `summary.csv` (all runs), `seeds.csv` (mean and std over seeds), `error_analysis.csv`, figures `fig_*.png`                                                                           |
-
-### Reproduce
-
-```sh
-.venv/bin/python resnet50/train_resnet50.py              # new full-data reference run, seed 42
-.venv/bin/python resnet50/train_resnet50.py --train-per-class 5000 --seed 1 --out-dir /tmp/resnet50-subset-repeat
-.venv/bin/python resnet50/compare_runs.py                # historical tables and figures
-```
-
-The training CLI matches ConvNeXt and VGG16. `--train-per-class` and `--val-per-class` are for subset experiments; test prediction is opt-in with `--predict-test`.
+Labels: `cat = 0`, `dog = 1`. Use the same 224 x 224 eval transform as `preprocessing.py`.

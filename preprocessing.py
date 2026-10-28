@@ -24,6 +24,7 @@ from torchvision import datasets, transforms
 DATA_DIR = Path(__file__).resolve().parent / "datasets"
 # Pairs of identical images found with a perceptual hash (train vs val, train vs test).
 DUPLICATES_CSV = Path(__file__).resolve().parent / "duplicate_pairs.csv"
+CACHE_DIR = Path(__file__).resolve().parent / "cached_256"
 
 SEED = 42
 IMG_SIZE = 224
@@ -130,20 +131,45 @@ def class_balanced_indices(dataset, eligible_indices, per_class, seed=SEED):
     return sorted(chosen)
 
 
-def get_loaders(train_per_class=None, val_per_class=None, batch_size=32,
-                num_workers=4, data_dir=DATA_DIR, img_size=IMG_SIZE,
-                augment=True, seed=SEED):
-    data_dir = Path(data_dir)
-    train_tf, eval_tf = get_transforms(img_size, augment)
-    train_ds = datasets.ImageFolder(data_dir / "train", transform=train_tf, loader=rgb_loader)
-    val_ds = datasets.ImageFolder(data_dir / "val", transform=eval_tf, loader=rgb_loader)
-    # Label convention required by the brief: 0 = cat, 1 = dog
-    assert train_ds.class_to_idx == {"cat": 0, "dog": 1}, train_ds.class_to_idx
 
-    # Subsets are sampled after duplicate removal and do not depend on the run seed.
-    train_indices = clean_train_indices(train_ds, data_dir / "train")
+def get_loaders(
+    train_per_class=None, val_per_class=None, batch_size=32,
+    num_workers=4, data_dir=DATA_DIR, img_size=IMG_SIZE,
+    augment=True, seed=SEED, cache_dir=CACHE_DIR,
+):
+    data_dir = Path(data_dir)
+    cache_dir = Path(cache_dir)
+
+    # Use cache only if all required split directories exist.
+    # Otherwise, fall back to the original dataset.
+    if all(
+        (cache_dir / split).is_dir()
+        for split in ("train", "val", "test")
+    ):
+        active_dir = cache_dir
+        print(f"Using resized image cache: {active_dir}")
+    else:
+        active_dir = data_dir
+        print(f"Cache not found. Using original images: {active_dir}")
+
+    train_tf, eval_tf = get_transforms(img_size, augment)
+
+    train_ds = datasets.ImageFolder(active_dir / "train", transform=train_tf, loader=rgb_loader)
+    val_ds = datasets.ImageFolder(active_dir / "val", transform=eval_tf, loader=rgb_loader)
+
+    # Label convention required by the brief: cat=0, dog=1.
+    assert train_ds.class_to_idx == {"cat": 0, "dog": 1}, (
+        train_ds.class_to_idx
+    )
+    assert val_ds.class_to_idx == {"cat": 0, "dog": 1}, (
+        val_ds.class_to_idx
+    )
+
+    # Duplicate paths remain valid because the cache preserves filenames.
+    train_indices = clean_train_indices(train_ds, active_dir / "train")
     train_indices = class_balanced_indices(train_ds, train_indices, train_per_class)
     train_sub = Subset(train_ds, train_indices)
+
     val_data = (Subset(val_ds, class_balanced_indices(
         val_ds, list(range(len(val_ds))), val_per_class)) if val_per_class else val_ds)
 
@@ -163,9 +189,21 @@ class TestImages(Dataset):
     """Flat folder of unlabeled test images (no dog/cat subfolders)."""
 
     def __init__(self, folder, img_size=IMG_SIZE):
-        exts = {".jpg", ".jpeg", ".png"}
-        self.paths = sorted(p for p in Path(folder).iterdir() if p.suffix.lower() in exts)
-        _, self.tf = get_transforms(img_size)
+        folder = Path(folder)
+
+        # If the caller passes datasets/test, transparently use its cache.
+        if (
+            folder.resolve() == (DATA_DIR / "test").resolve()
+            and (CACHE_DIR / "test").is_dir()
+        ):
+            folder = CACHE_DIR / "test"
+
+        exts = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
+        self.paths = sorted(
+            p for p in folder.iterdir()
+            if p.is_file() and p.suffix.lower() in exts
+        )
+        self.tf = get_transforms(img_size)[1]
 
     def __len__(self):
         return len(self.paths)

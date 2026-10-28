@@ -11,6 +11,7 @@ __pycache__/
 
 # Dataset images are large
 datasets/
+cached_256/
 cifar-10-batches-py
 cifar-10/
 
