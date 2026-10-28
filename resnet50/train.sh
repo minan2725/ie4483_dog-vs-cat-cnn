@@ -10,13 +10,15 @@ python resnet50/train_resnet50.py --lr 1e-3 --seed 42
 # After step 1, put the best learning rate here (highest validation accuracy):
 LR=1e-5
 
-# 2. Augmentation off, at the best learning rate
+# 2. Augmentation off, 3 seeds of the best learning rate from step 1
 python resnet50/train_resnet50.py --lr $LR --seed 42 --no-augment 
+python resnet50/train_resnet50.py --lr $LR --seed 1 --no-augment
+python resnet50/train_resnet50.py --lr $LR --seed 2 --no-augment
 
 # 3. Two more seeds of the best configuration of steps 1-2
 #    (add --no-augment to both lines if augmentation off was better)
 python resnet50/train_resnet50.py --lr $LR --seed 1 
 python resnet50/train_resnet50.py --lr $LR --seed 2 
 
-# 4. From scratch (same batch size and epoch limit, higher learning rate)
+# 4. From scratch (same batch size, 20 epochs, higher learning rate)
 python resnet50/train_resnet50.py --scratch --lr 1e-3 --epochs 20 --seed 42 
