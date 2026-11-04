@@ -1,0 +1,1 @@
+vgg16/runs/vgg16_lr1e-05_n5000_e12_s42/best.pt filter=lfs diff=lfs merge=lfs -text
