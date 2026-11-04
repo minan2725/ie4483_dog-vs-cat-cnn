@@ -8,7 +8,7 @@ Reproduce all tables and figures: `python resnet50/compare_runs.py`
 - 19,981 train, 5,000 val, 500 test images, 224 x 224
 - AdamW (weight decay 1e-4), cosine LR schedule, batch size 32, seed 42 unless stated
 - 10 epochs, no early stopping (scratch run: 20 epochs)
-- Saved model = the epoch with the highest val accuracy
+- Saved model = the epoch with the highest val accuracy (ties: lower val loss)
 
 ## All runs
 
@@ -19,6 +19,7 @@ Reproduce all tables and figures: `python resnet50/compare_runs.py`
 | lr 1e-3 | 98.50 (10) | 98.50 | 0.0427 | 0.98 |
 | lr 1e-5, no augmentation | 99.40 (5) | 99.34 | 0.0210 | 0.60 |
 | lr 1e-5, no augmentation, seed 1 | 99.44 (4) | 99.44 | 0.0194 | 0.46 |
+| lr 1e-5, no augmentation, seed 2 | 99.34 (9) | 99.30 | 0.0232 | 0.64 |
 | lr 1e-5, seed 1 | 99.46 (6) | 99.38 | 0.0154 | 0.34 |
 | lr 1e-5, seed 2 | 99.44 (7) | 99.34 | 0.0173 | 0.42 |
 | From scratch, lr 1e-3, 20 epochs | 96.28 (20) | 96.28 | 0.1043 | 0.25 |
@@ -34,7 +35,7 @@ Figure: `results/fig_learning_rate.png`
 
 **Conclusion: use lr 1e-5.**
 
-- lr 1e-3 is the worst (98.50%). After epoch 1 its val accuracy is only 92.56%, while the others are above 99%. A big learning rate damages the pretrained weights.
+- lr 1e-3 is the worst (98.50%). After epoch 1 its val accuracy is only 92.56%, while the others are above 99%. A big learning rate probably damages the pretrained weights.
 - lr 1e-4 and 1e-5 have almost the same accuracy (5 images apart). lr 1e-5 has a lower val loss, a smaller gap and a smoother curve (lr 1e-4 dips at epoch 4).
 - lr 1e-4 and 1e-3 have one seed only.
 
@@ -46,18 +47,21 @@ Figure: `results/fig_augmentation.png`
 | --- | --- | --- | --- | --- | --- |
 | Augmentation | 42 | 99.50 | 99.42 | 0.0173 | 0.34 |
 | Augmentation | 1 | 99.46 | 99.38 | 0.0154 | 0.34 |
-| **Augmentation, mean** | | **99.48** | **99.40** | **0.0164** | **0.34** |
+| Augmentation | 2 | 99.44 | 99.34 | 0.0173 | 0.42 |
+| **Augmentation, mean** | | **99.47** | **99.38** | **0.0167** | **0.37** |
 | No augmentation | 42 | 99.40 | 99.34 | 0.0210 | 0.60 |
 | No augmentation | 1 | 99.44 | 99.44 | 0.0194 | 0.46 |
-| **No augmentation, mean** | | **99.42** | **99.39** | **0.0202** | **0.53** |
+| No augmentation | 2 | 99.34 | 99.30 | 0.0232 | 0.64 |
+| **No augmentation, mean** | | **99.39** | **99.36** | **0.0212** | **0.57** |
 
-**Conclusion: keep augmentation. The reason is less overfitting, not higher accuracy.**
+Best val std: 0.03 pp with augmentation, 0.05 pp without.
 
-- Accuracy is about the same. Best val differs by 0.06 pp (3 images). Last-epoch val is 99.40 vs 99.39.
-- Val loss is lower with augmentation in both seeds (0.0173 vs 0.0210, 0.0154 vs 0.0194).
-- The gap is smaller with augmentation in both seeds (0.34 vs 0.60, 0.34 vs 0.46).
-- Without augmentation, train accuracy reaches about 99.9% and val loss stops improving after epoch 4 or 5. With augmentation, val loss keeps improving until epoch 8 or 9.
-- Two seeds per setting only.
+**Conclusion: keep augmentation. It overfits less in all 3 seeds. The accuracy gain is small.**
+
+- Val loss is lower with augmentation in 3 of 3 seeds.
+- The gap is smaller with augmentation in 3 of 3 seeds.
+- Best val is higher with augmentation in 3 of 3 seeds, but only by 0.02 to 0.10 pp (mean 0.07 pp, about 3 images). Last-epoch val is the same (99.38 vs 99.36).
+- Without augmentation, train accuracy reaches about 99.9% and val loss stops improving after epoch 4 or 5. With augmentation, val loss keeps improving until epoch 6 to 9.
 
 ## 3. Seeds
 
@@ -68,7 +72,7 @@ Seeds 42, 1, 2 of the baseline. File: `results/seeds.csv`.
 | Best val accuracy | 99.47 | 0.03 |
 | Last-epoch val accuracy | 99.38 | 0.04 |
 
-**Conclusion: the baseline is stable. Final val result: 99.47 ± 0.03%.**
+**Conclusion: the baseline is stable. Final val result: 99.47 ± 0.03% (best epoch), 99.38 ± 0.04% (last epoch).**
 
 - lr 1e-3 and scratch are far below the noise level, so these differences are real.
 - lr 1e-4 is 0.10 pp lower. This is just above 2 std (0.06 pp), so the evidence is weak.
@@ -111,6 +115,7 @@ python resnet50/train_resnet50.py --lr 1e-4 --seed 42
 python resnet50/train_resnet50.py --lr 1e-3 --seed 42
 python resnet50/train_resnet50.py --lr 1e-5 --seed 42 --no-augment
 python resnet50/train_resnet50.py --lr 1e-5 --seed 1 --no-augment
+python resnet50/train_resnet50.py --lr 1e-5 --seed 2 --no-augment
 python resnet50/train_resnet50.py --lr 1e-5 --seed 1
 python resnet50/train_resnet50.py --lr 1e-5 --seed 2
 python resnet50/train_resnet50.py --scratch --lr 1e-3 --epochs 20 --seed 42

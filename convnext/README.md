@@ -71,7 +71,7 @@ images and should be phrased as qualitative examples in the group report.
 ## Full-data training
 
 The current trainer uses all 19,981 clean training images and all 5,000
-validation images. The default recipe uses 224-pixel inputs, five epochs,
+validation images. The default recipe uses 224-pixel inputs, 10 epochs,
 batch size 32, learning rate 1e-4, and seed 42:
 
 ```sh
@@ -84,7 +84,7 @@ same CLI and run format as ResNet50 and VGG16. Use `--train-per-class` and
 submission after training. An existing run directory requires a different
 `--out-dir` or an explicit `--overwrite`.
 
-The run folder is `convnext/runs/convnext_tiny_lr0.0001_n19981_e5_s42`.
+The run folder is `convnext/runs/convnext_tiny_lr0.0001_n19981_e10_s42`.
 Each run writes `history.json` and an ignored `best.pt` in its own folder.
 To use a trained checkpoint on another machine, transfer `best.pt`
 separately or reproduce the run; Git will include the metrics but not weights.
@@ -92,12 +92,15 @@ The older `compare_runs.py` tables cover only the 5,000-per-class experiments;
 they do not include the full-data run. Results may vary slightly on MPS even
 with a fixed seed.
 
-The full-data seed-42 run selected epoch 2 by validation accuracy: 99.56%
-(4,978/5,000), with validation loss 0.0136. Its 500-image test submission
-scored 99.40% (497/500; one false positive and two false negatives). The
-earlier 10,000-image seed-42 run scored 99.50% on validation and 99.60% on
-test. One run per setting cannot establish that more data helped or hurt;
-the test scores must not be used to tune or select a checkpoint.
+The 10-epoch full-data seed-42 run selected epoch 10 by validation accuracy:
+99.60% (4,980/5,000), with validation loss 0.0180 and a mean epoch time of
+286 seconds on MPS. Its 500-image test submission scored 99.40% (497/500;
+zero false positives and three false negatives). The earlier five-epoch
+full-data run selected epoch 2 at 99.56% validation accuracy and also scored
+99.40% on test, while the 10,000-image seed-42 run scored 99.50% on validation
+and 99.60% on test. One run per setting cannot establish that more data or
+more epochs helped or hurt; test scores must not be used to tune or select a
+checkpoint.
 
 ## Final prediction and report
 
@@ -105,7 +108,7 @@ Choose one run by validation accuracy (validation loss breaks ties), then
 predict the test set once:
 
 ```sh
-.venv/bin/python convnext/predict_convnext.py --run convnext_tiny_lr0.0001_n19981_e5_s42 --evaluate
+.venv/bin/python convnext/predict_convnext.py --run convnext_tiny_lr0.0001_n19981_e10_s42 --evaluate
 ```
 
 Replace the run name with the actual validation-selected run. The command
