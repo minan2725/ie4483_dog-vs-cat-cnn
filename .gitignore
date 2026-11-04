@@ -17,6 +17,7 @@ cifar-10/
 
 # Trained model weights (~95 MB each)
 *.pt
+!vgg16/runs/vgg16_lr1e-05_n5000_e12_s42/best.pt
 
 # Small local ConvNeXt smoke runs are disposable
 convnext/runs/smoke*/
